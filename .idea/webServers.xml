@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="e4424c90-aca9-42f9-965a-ceddbe7e6f0a" name="苏大">
+        <fileTransfer rootFolder="/public/home/mcao" accessType="SFTP" host="192.168.126.61" port="22" sshConfigId="a30516ab-823c-42fe-9470-4c4e4990fd7a" sshConfig="mcao@192.168.126.61:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="7ec6ce9b-1b6f-4760-87be-002c4a6c234f" name="苏大二">
+        <fileTransfer accessType="SFTP" host="10.10.80.64" port="22" sshConfigId="7a63f0e7-d4cb-4d24-a1f9-c602a0d4635c" sshConfig="tyu@10.10.80.64:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
