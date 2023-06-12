@@ -65,11 +65,11 @@ class MyDataset(torch.utils.data.Dataset):
             print('erro picture:', img_name)
         return img, label
 
-def load_dataset(batch_size):
+def load_dataset(train_dataset_path, test_dataset_path, batch_size):
 
-    TRAIN_LABELS_FILE = 'data/ISIA_Food500/metadata_ISIAFood_500/train_full.txt'
-    # VAL_LABELS_FILE = 'data/ISIA_Food500/metadata_ISIAFood_500/val_finetune.txt'
-    TEST_LABELS_FILE = 'data/ISIA_Food500/metadata_ISIAFood_500/test_public.txt'
+    TRAIN_LABELS_FILE = train_dataset_path
+
+    TEST_LABELS_FILE = test_dataset_path
     IMAGES_FILE_PATH = 'data/ISIA_Food500/images'
 
     train_transforms, test_transforms = load_transforms()

@@ -6,43 +6,10 @@ from model import load_model
 from data import load_dataset
 import os
 import argparse
-
+import torchmetrics
 import torch
 from torchvision import transforms
 
-def evaluteTop1(loader):
-
-    correct = 0
-    total = len(loader.dataset)
-    for x, y in loader:
-        if args.multi_gpu:
-            if torch.cuda.is_available():
-                x = x.cuda(device=device_ids[0])
-                y = y.cuda(device=device_ids[0])
-        else:
-            x, y = x.to(device), y.to(device)
-        logits = model(x)
-        pred = logits.argmax(dim=1)
-        correct += torch.eq(pred, y).sum().float().item()
-    return correct / total
-
-def evaluteTop5(loader):
-
-    correct = 0
-    total = len(loader.dataset)
-    for x, y in loader:
-        if args.multi_gpu:
-            if torch.cuda.is_available():
-                x = x.cuda(device=device_ids[0])
-                y = y.cuda(device=device_ids[0])
-        else:
-            x, y = x.to(device), y.to(device)
-        logits = model(x)
-        maxk = max((1, 5))
-        y_resize = y.view(-1, 1)
-        _, pred = logits.topk(maxk, 1, True, True)
-        correct += torch.eq(pred, y_resize).sum().float().item()
-    return correct / total
 
 def load_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -69,9 +36,14 @@ def train_model(epoch):
     print('Training Network.....')
     model.train()
 
-    # keep track of training and validation loss
-    correct_top1acc = 0
-    correct_top5acc = 0
+    if args.multi_gpu:
+        if torch.cuda.is_available():
+            top1acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=1).cuda(device=device_ids[0])
+            top5acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=5).cuda(device=device_ids[0])
+    else:
+        top1acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=1).to(device)
+        top5acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=5).to(device)
+
     total_sample = len(train_dataset)
     for batch_index, (images, target) in enumerate(train_loader):
 
@@ -93,30 +65,27 @@ def train_model(epoch):
         # perform a single optimization step (parameter update)
         optimizer.step()
 
-        # top1 acc
-        pred1 = logits.argmax(dim=1)
-        correct_top1acc += torch.eq(pred1, target).sum().float().item()
-
-        # top5 acc
-        maxk = max((1, 5))
-        y_resize = target.view(-1, 1)
-        _, pred5 = logits.topk(maxk, 1, True, True)
-        correct_top5acc += torch.eq(pred5, y_resize).sum().float().item()
+        # top1 acc and top5 acc
+        top1acc = top1acc_metric(logits, target)
+        top5acc = top5acc_metric(logits, target)
 
         if batch_index % 50 == 0:
             trained_samples = batch_index * BATCH_SIZE + len(images)
-            print(f"Training Epoch: {epoch + 1}, [{trained_samples}/{total_sample}]\t "
-                  f"Loss:{loss.item():.4f}")
-            writer.add_scalar("loss", loss.item(), batch_index + 1
-                              + epoch * len(train_loader))
+            print(f"Training Epoch: {epoch}, [{trained_samples}/{total_sample}]\t "
+                  f"Loss:{loss.item():.4f}, \t top1acc:{top1acc.item():.4f},\t top5acc:{top5acc.item():.4f}")
+            writer.add_scalar("loss", loss.item(), batch_index + epoch * len(train_loader))
+            writer.add_scalar("training one batch top1acc", top1acc, batch_index + epoch * len(train_loader))
+            writer.add_scalar("training one batch top5acc", top5acc, batch_index + epoch * len(train_loader))
 
-    train_top1acc = correct_top1acc / total_sample
-    train_top5acc = correct_top5acc / total_sample
-    print(f"Training Epoch: {epoch + 1}, training top1acc: {train_top1acc:.4f}, "
-          f"training top5acc:{train_top5acc:.4f}")
-    writer.add_scalar("training top1acc", train_top1acc, epoch)
-    writer.add_scalar("training top5acc", train_top5acc, epoch)
+    top1acc = top1acc_metric.compute()
+    top5acc = top5acc_metric.compute()
+    print(f"Training Epoch: {epoch}, training top1acc: {top1acc:.4f}, "
+          f"training top5acc:{top5acc:.4f}")
+    writer.add_scalar("training one epoch top1acc", top1acc, epoch)
+    writer.add_scalar("training one epoch top5acc", top5acc, epoch)
 
+    top1acc_metric.reset()
+    top5acc_metric.reset()
 
 # eval model
 @torch.no_grad()
@@ -124,13 +93,38 @@ def eval_test_dataset(epoch, loader):
     print('Evaluating Network.....')
     start = time.time()
     model.eval()
-    top1_acc = evaluteTop1(loader)
-    top5_acc = evaluteTop5(loader)
+    if args.multi_gpu:
+        if torch.cuda.is_available():
+            top1acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=1).cuda(device=device_ids[0])
+            top5acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=5).cuda(device=device_ids[0])
+    else:
+        top1acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=1).to(device)
+        top5acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=500, top_k=5).to(device)
+
+    for imgs, target in loader:
+        if args.multi_gpu:
+            if torch.cuda.is_available():
+                imgs = imgs.cuda(device=device_ids[0])
+                target = target.cuda(device=device_ids[0])
+        else:
+            imgs, target = imgs.to(device), target.to(device)
+        logits = model(imgs)
+
+        # top1 accuracy and top5 accuracy
+        top1acc = top1acc_metric(logits, target)
+        top5acc = top5acc_metric(logits, target)
+
+    top1acc = top1acc_metric.compute()
+    top5acc = top5acc_metric.compute()
     finish = time.time()
-    print(f"Evaluating Test dataset: Epoch: {epoch}, top1: {top1_acc}, top5: {top5_acc}, time consumed:{finish - start:.2f}s")
-    writer.add_scalar("test top1acc", top1_acc, epoch)
-    writer.add_scalar("test top5acc", top5_acc, epoch)
-    return top1_acc
+    print(f"Evaluating Test dataset: Epoch: {epoch}, top1: {top1acc}, top5: {top5acc}, time consumed:{finish - start:.2f}s")
+    writer.add_scalar("test top1acc", top1acc, epoch)
+    writer.add_scalar("test top5acc", top5acc, epoch)
+
+    top1acc_metric.reset()
+    top5acc_metric.reset()
+
+    return top1acc
 
 
 # parse parameters
@@ -142,7 +136,8 @@ def parse_args():
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--step_lr', type=int, default=10)
-
+    parser.add_argument('--train_dataset_path', type=str, default="Food500_train_path")
+    parser.add_argument('--test_dataset_path', type=str, default="Food500_test_path")
     args, unparsed = parser.parse_known_args()
 
     return args
@@ -161,11 +156,13 @@ if __name__ == "__main__":
     EPOCH = args.epoch
     BATCH_SIZE = args.batch_size
     model_name = args.model
+    train_dataset_path = args.train_dataset_path
+    test_dataset_path = args.test_dataset_path
 
-    train_dataset, test_dataset = load_dataset(BATCH_SIZE)
+    train_dataset, test_dataset = load_dataset(train_dataset_path, test_dataset_path, BATCH_SIZE)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True,
                                                num_workers=2)
-    # val_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
     model = load_model(model_name)
