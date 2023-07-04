@@ -83,7 +83,33 @@ def load_dataset(train_dataset_path, test_dataset_path, batch_size):
 
 if __name__ == "__main__":
     # train_loader, val_loader, test_loader = load_dataloader(80)
-    train_loader, test_loader = load_dataset(80)
-    print(test_loader)
-    for imgs, lables in train_loader:
-        print(lables)
+    # train_loader, test_loader = load_dataset(80)
+    # print(test_loader)
+    # for imgs, lables in train_loader:
+    #     print(lables)
+    total_num = 0
+    label_num = {}
+    with open("data/ISIA_Food500/metadata_ISIAFood_500/train_full2.txt") as file:
+        for line in file:
+            cols = line.split()
+            label = cols[-1]
+            if label in label_num:
+                label_num[label] = label_num[label] + 1
+            else:
+                label_num[label] = 1
+            total_num += 1
+
+    label_num = dict(sorted(label_num.items(), key=lambda d: d[0]))
+
+    imgs_num = 0
+    for key in label_num:
+        imgs_num += label_num[key]
+
+    class_num = len(label_num)
+    average_weight = imgs_num / class_num
+
+    label_weight = []
+    for key in label_num:
+        label_weight.append(average_weight/label_num[key])
+
+    print(label_weight)
