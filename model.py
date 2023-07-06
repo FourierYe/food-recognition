@@ -7,11 +7,13 @@ import torch
 import pretrainedmodels
 import math
 import torch.nn.functional as F
-
+from vit_pytorch.vit import ViT
 
 def load_model(model):
     if model == "senet154":
         return SeNet154()
+    elif model == 'vit':
+        return ViT(image_size=224, patch_size=16, num_classes=500, dim=768, depth=12, heads=12, mlp_dim=3072)
     elif model == "senet_volo":
         return SeNetVol()
 
@@ -120,8 +122,14 @@ class OutlookAttention(nn.Module):
 
 
 if __name__ == '__main__':
-    C = 10
-    X = torch.randn(1, 3, 10, 10)
-    model = OutlookAttention(dim=C, num_heads=1)
-    X = model(X)
-    print(X.shape)
+    # C = 10
+    # X = torch.randn(1, 3, 10, 10)
+    # model = OutlookAttention(dim=C, num_heads=1)
+    # X = model(X)
+    # print(X.shape)
+
+    model = load_model('vit')
+    print(model)
+    imgs = torch.randn(1, 3, 224, 224)
+    preds = model(imgs)
+    print(preds)

@@ -3,13 +3,13 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torch.optim as optim
 from model import load_model
-from data import load_dataset
+from data import load_dataset, load_class_weight
 import os
 import argparse
 import torchmetrics
 import torch
 from torchvision import transforms
-
+from focal_loss import FocalLoss
 
 def load_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -138,6 +138,7 @@ def parse_args():
     parser.add_argument('--step_lr', type=int, default=10)
     parser.add_argument('--train_dataset_path', type=str, default="Food500_train_path")
     parser.add_argument('--test_dataset_path', type=str, default="Food500_test_path")
+    parser.add_argument('--focal_loss', type=bool, default=False)
     args, unparsed = parser.parse_known_args()
 
     return args
@@ -176,7 +177,11 @@ if __name__ == "__main__":
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    if args.focal_loss:
+        class_weight = load_class_weight().cuda(device=device_ids[0])
+        criterion = FocalLoss(alpha=class_weight)
+    else:
+        criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     step_size = args.step_lr
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size, gamma=0.1, last_epoch=-1, verbose=False)

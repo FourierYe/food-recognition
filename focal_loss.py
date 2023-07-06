@@ -138,9 +138,9 @@ if __name__ == '__main__':
 
     import numpy as np
 
-    a = np.random.randn((10))
+    a = np.random.randn( ( 10 ) )
     for index, value in enumerate(a):
-        if value <0:
+        if value < 0:
             a[index] = 0
         else:
             a[index] = 2

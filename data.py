@@ -70,7 +70,7 @@ def load_dataset(train_dataset_path, test_dataset_path, batch_size):
     TRAIN_LABELS_FILE = train_dataset_path
 
     TEST_LABELS_FILE = test_dataset_path
-    IMAGES_FILE_PATH = 'data/ISIA_Food500/images'
+    IMAGES_FILE_PATH = 'data/isiafood500/ISIA_Food500/images'
 
     train_transforms, test_transforms = load_transforms()
 
@@ -81,18 +81,14 @@ def load_dataset(train_dataset_path, test_dataset_path, batch_size):
     # return train_dataset, val_dataset, test_dataset
     return train_dataset, test_dataset
 
-if __name__ == "__main__":
-    # train_loader, val_loader, test_loader = load_dataloader(80)
-    # train_loader, test_loader = load_dataset(80)
-    # print(test_loader)
-    # for imgs, lables in train_loader:
-    #     print(lables)
+
+def load_class_weight():
     total_num = 0
     label_num = {}
-    with open("data/ISIA_Food500/metadata_ISIAFood_500/train_full2.txt") as file:
+    with open("data/isiafood500/metadata_ISIAFood_500/train_full.txt") as file:
         for line in file:
             cols = line.split()
-            label = cols[-1]
+            label = int(cols[-1])
             if label in label_num:
                 label_num[label] = label_num[label] + 1
             else:
@@ -110,6 +106,15 @@ if __name__ == "__main__":
 
     label_weight = []
     for key in label_num:
-        label_weight.append(average_weight/label_num[key])
+        label_weight.append(average_weight / label_num[key])
 
+    return torch.tensor(label_weight)
+
+if __name__ == "__main__":
+    # train_loader, val_loader, test_loader = load_dataloader(80)
+    # train_loader, test_loader = load_dataset(80)
+    # print(test_loader)
+    # for imgs, lables in train_loader:
+    #     print(lables)
+    label_weight = load_class_weight()
     print(label_weight)
