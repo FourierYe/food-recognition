@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
     if args.focal_loss:
         class_weight = load_class_weight().cuda(device=device_ids[0])
-        criterion = FocalLoss(alpha=class_weight)
+        criterion = FocalLoss(alpha=class_weight, gamma=2)
     else:
         criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
