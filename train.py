@@ -3,13 +3,12 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torch.optim as optim
 from model import load_model
-from data import load_dataset, load_class_weight
+from data import load_dataset
 import os
 import argparse
 import torchmetrics
 import torch
 from torchvision import transforms
-from focal_loss import FocalLoss
 
 def load_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -110,6 +109,8 @@ def eval_test_dataset(epoch, loader):
             imgs, target = imgs.to(device), target.to(device)
         logits = model(imgs)
 
+        loss = criterion(logits, target)
+
         # top1 accuracy and top5 accuracy
         top1acc = top1acc_metric(logits, target)
         top5acc = top5acc_metric(logits, target)
@@ -118,13 +119,14 @@ def eval_test_dataset(epoch, loader):
     top5acc = top5acc_metric.compute()
     finish = time.time()
     print(f"Evaluating Test dataset: Epoch: {epoch}, top1: {top1acc}, top5: {top5acc}, time consumed:{finish - start:.2f}s")
+    writer.add_scalar("test loss", loss.item(), epoch)
     writer.add_scalar("test top1acc", top1acc, epoch)
     writer.add_scalar("test top5acc", top5acc, epoch)
 
     top1acc_metric.reset()
     top5acc_metric.reset()
 
-    return top1acc
+    return top1acc, top5acc
 
 
 # parse parameters
@@ -177,11 +179,7 @@ if __name__ == "__main__":
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
 
-    if args.focal_loss:
-        class_weight = load_class_weight().cuda(device=device_ids[0])
-        criterion = FocalLoss(alpha=class_weight, gamma=2)
-    else:
-        criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     step_size = args.step_lr
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size, gamma=0.1, last_epoch=-1, verbose=False)
@@ -190,13 +188,16 @@ if __name__ == "__main__":
     # init tensorboard
     writer = SummaryWriter('./log')
     best_top1_acc = 0
+    best_top5_acc = 0
     for epoch in range(EPOCH):
         # train model one epoch
         train_model(epoch)
         # Evaluation on test dataset
-        top1_acc = eval_test_dataset(epoch, test_loader)
+        top1_acc, top5_acc = eval_test_dataset(epoch, test_loader)
         # save best check point
         if top1_acc > best_top1_acc:
             best_top1_acc = top1_acc
+            best_top5_acc = top5_acc
             torch.save(model.state_dict(), f'{model_name}_pretrained.pth')
 
+    print(f"best top1 acc {best_top1_acc}; best top 5 acc {best_top5_acc}")
