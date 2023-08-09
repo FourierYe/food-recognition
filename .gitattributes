@@ -1,0 +1,2 @@
+senet154_32.log filter=lfs diff=lfs merge=lfs -text
+senet154_pretrained.pth filter=lfs diff=lfs merge=lfs -text
