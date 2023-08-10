@@ -40,7 +40,7 @@ class SenetSwin(nn.Module):
         self.senet154.eval()
         self.senet154.last_linear = nn.Linear(2048, 1000, bias=True)
 
-        self.swin_model = models.swin_b()
+        self.swin_model = models.swin_b(models.Swin_B_Weights)
         self.swin_model.head = nn.Linear(in_features=1024, out_features=1000, bias=True)
 
         self.last_linear = nn.Linear(in_features=2000, out_features=500, bias=True)
