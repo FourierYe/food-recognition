@@ -144,3 +144,5 @@ data/
 *.log
 log/
 exp/
+.idea/
+.vscode

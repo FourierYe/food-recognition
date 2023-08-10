@@ -28,7 +28,29 @@ def load_model(model):
         model = models.swin_b()
         model.head = nn.Linear(in_features=1024, out_features=500, bias=True)
         return model
+    elif model == 'senet_swin':
+        return SenetSwin()
 
+class SenetSwin(nn.Module):
+    def __init__(self):
+        super(SenetSwin, self).__init__()
+        senet_name = 'senet154'
+        # could be fbresnet152 or inceptionresnetv2
+        self.senet154 = pretrainedmodels.__dict__[senet_name](num_classes=1000, pretrained='imagenet')
+        self.senet154.eval()
+        self.senet154.last_linear = nn.Linear(2048, 1000, bias=True)
+
+        self.swin_model = models.swin_b()
+        self.swin_model.head = nn.Linear(in_features=1024, out_features=1000, bias=True)
+
+        self.last_linear = nn.Linear(in_features=2000, out_features=500, bias=True)
+
+    def forward(self, x):
+        features1 = self.senet154(x)
+        features2 = self.swin_model(x)
+        features = torch.cat((features1, features2), dim=1)
+        x = self.last_linear(features)
+        return x
 
 class Volo(nn.Module):
     def __init__(self, **kwargs):
@@ -157,7 +179,7 @@ if __name__ == '__main__':
     # X = model(X)
     # print(X.shape)
 
-    model = load_model('swin')
+    model = load_model('senet_swin')
     print(model)
     X = torch.randn(20, 3, 224, 224)
     X = model(X)
