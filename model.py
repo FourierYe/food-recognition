@@ -30,6 +30,8 @@ def load_model(model):
         return model
     elif model == 'senet_swin':
         return SenetSwin()
+    elif model == 'ResNetFeatures':
+        return ResNetFeatures()
 
 class SenetSwin(nn.Module):
     def __init__(self):
@@ -171,6 +173,14 @@ class Attention(nn.Module):
         out = rearrange(out, 'b h n d -> b n (h d)')
         return self.to_out(out)
 
+class ResNetFeatures(nn.Module):
+    def __init__(self):
+        super().__init__()
+        resnet = models.resnet18(pretrained=True)
+        self.resnet_features = nn.Sequential(*list(resnet.children())[:-2])
+    
+    def forward(self, x):
+        return self.resnet_features(x)
 
 if __name__ == '__main__':
     # C = 10
@@ -179,8 +189,14 @@ if __name__ == '__main__':
     # X = model(X)
     # print(X.shape)
 
-    model = load_model('senet_swin')
+    model = load_model('ResNetFeatures')
     print(model)
     X = torch.randn(20, 3, 224, 224)
     X = model(X)
-    print(X)
+    print(X.shape)
+    import matplotlib.pyplot as plt
+
+    print(X[0,0,:,:].data)
+    plt.imshow(X[0,0,:,:].data)
+    plt.savefig('test')
+    plt.show()
