@@ -11,7 +11,7 @@ from vit_pytorch.vit import ViT
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 from volo import *
-
+from MyModel import MyModel
 
 def load_model(model):
     if model == "senet154":
@@ -34,8 +34,10 @@ def load_model(model):
         return ResNetFeatures()
     elif model == 'SeNetFeatures':
         model = pretrainedmodels.__dict__['senet154'](num_classes=1000, pretrained='imagenet')
-        print(model)
         model = nn.Sequential(*list(model.children())[:-2])
+        return model
+    elif model == 'mymodel':
+        model = MyModel(num_classes=500, dim=196, depth=12, heads=12, mlp_dim=784)
         return model
 
 
