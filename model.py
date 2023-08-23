@@ -32,6 +32,12 @@ def load_model(model):
         return SenetSwin()
     elif model == 'ResNetFeatures':
         return ResNetFeatures()
+    elif model == 'SeNetFeatures':
+        model = pretrainedmodels.__dict__['senet154'](num_classes=1000, pretrained='imagenet')
+        print(model)
+        model = nn.Sequential(*list(model.children())[:-2])
+        return model
+
 
 class SenetSwin(nn.Module):
     def __init__(self):
