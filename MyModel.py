@@ -83,8 +83,6 @@ class Transformer(nn.Module):
 class MyModel(nn.Module):
     def __init__(self, *, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', dim_head = 64, dropout = 0., emb_dropout = 0.):
         super().__init__()
-        self.local_features = models.resnet50(pretrained=True)
-        self.local_features.fc = nn.Linear(in_features=2048, out_features=500, bias=True)
 
         self.resnet_features = nn.Sequential(*list(models.resnet50(pretrained=True).children())[:-4])
 

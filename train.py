@@ -133,6 +133,8 @@ def eval_test_dataset(epoch, loader):
 def parse_args():
     parser = argparse.ArgumentParser('parameters for training model')
     parser.add_argument('--model', type=str, default='senet154')
+    parser.add_argument("--learning_rate", default=1e-4, type=float,
+                        help="The initial learning rate for SGD.")
     parser.add_argument("--multi_gpu", type=bool, default=False)
     parser.add_argument('--gpus', nargs='+', type=int, default=[0,1])
     parser.add_argument('--epoch', type=int, default=100)
@@ -180,9 +182,17 @@ if __name__ == "__main__":
         model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+
+    ignored_params = list(map(id, model.resnet_features.parameters()))
+    new_params = filter(lambda p: id(p) not in ignored_params, model.parameters())
+
+    optimizer = optim.SGD([
+        {'params': model.resnet_features.parameters(), 'lr': args.learning_rate*0.1},
+        {'params': new_params, 'lr': args.learning_rate}
+    ], momentum=0.9, weight_decay=5e-4)
+
     step_size = args.step_lr
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size, gamma=0.1, last_epoch=-1, verbose=False)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=0.9)
 
     # start training
     # init tensorboard
@@ -192,6 +202,7 @@ if __name__ == "__main__":
     for epoch in range(EPOCH):
         # train model one epoch
         train_model(epoch)
+        scheduler.step()
         # Evaluation on test dataset
         top1_acc, top5_acc = eval_test_dataset(epoch, test_loader)
         # save best check point
