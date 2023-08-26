@@ -83,9 +83,11 @@ class Transformer(nn.Module):
 class MyModel(nn.Module):
     def __init__(self, *, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', dim_head = 64, dropout = 0., emb_dropout = 0.):
         super().__init__()
-        self.resnet_features = nn.Sequential(*list(models.resnet18(pretrained=True).children())[:-3])
+        self.local_features = models.resnet50(pretrained=True)
+        self.local_features.fc = nn.Linear(in_features=2048, out_features=500, bias=True)
 
-        self.pos_embedding = nn.Parameter(torch.randn(1, 512 + 1, dim))
+        self.resnet_features = nn.Sequential(*list(models.resnet50(pretrained=True).children())[:-4])
+
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
 
@@ -94,31 +96,29 @@ class MyModel(nn.Module):
         self.pool = pool
         self.to_latent = nn.Identity()
 
-        self.mlp_head = nn.Sequential(
-            nn.LayerNorm(dim),
-            nn.Linear(dim, num_classes)
-        )
+        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        self.fc = nn.Linear(in_features=512, out_features=500, bias=True)
 
     def forward(self, img):
-        x = self.resnet_features(img)
-        b, n, w, h = x.shape
+        local_features = self.resnet_features(img)
+        b, n, w, h = local_features.shape
 
-        x = x.view(b, n, -1)
-        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
-        x = torch.cat((cls_tokens, x), dim=1)
-        x += self.pos_embedding[:, :(n + 1)]
+        x = local_features.view(b, n, -1)
+
         x = self.dropout(x)
-
         x = self.transformer(x)
 
-        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+        global_features = self.to_latent(x).view(b, n, w, h)
+        total_features = local_features + global_features
+        features = self.avgpool(total_features)
+        features = torch.flatten(features, 1)
+        preds = self.fc(features)
 
-        x = self.to_latent(x)
-        return self.mlp_head(x)
+        return preds
 
 if __name__ == "__main__":
 
-    model = MyModel(num_classes=500, dim=196, depth=12, heads=12, mlp_dim=784)
+    model = MyModel(num_classes=500, dim=784, depth=12, heads=12, mlp_dim=784)
     X = torch.randn(20, 3, 224, 224)
     X = model(X)
     print(X.shape)

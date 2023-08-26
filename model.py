@@ -37,7 +37,7 @@ def load_model(model):
         model = nn.Sequential(*list(model.children())[:-2])
         return model
     elif model == 'mymodel':
-        model = MyModel(num_classes=500, dim=196, depth=12, heads=12, mlp_dim=784)
+        model = MyModel(num_classes=500, dim=784, depth=12, heads=12, mlp_dim=784)
         return model
 
 
