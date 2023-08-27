@@ -183,11 +183,11 @@ if __name__ == "__main__":
 
     criterion = nn.CrossEntropyLoss()
 
-    ignored_params = list(map(id, model.resnet_features.parameters()))
+    ignored_params = list(map(id, model.module.resnet_features.parameters()))
     new_params = filter(lambda p: id(p) not in ignored_params, model.parameters())
 
     optimizer = optim.SGD([
-        {'params': model.resnet_features.parameters(), 'lr': args.learning_rate*0.1},
+        {'params': model.module.resnet_features.parameters(), 'lr': args.learning_rate*0.1},
         {'params': new_params, 'lr': args.learning_rate}
     ], momentum=0.9, weight_decay=5e-4)
 
