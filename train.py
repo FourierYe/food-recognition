@@ -147,7 +147,26 @@ def parse_args():
 
     return args
 
+def get_optimizer(model_name):
+    if model_name == 'mymodel':
+        ignored_params = list(map(id, model.module.resnet_features.parameters()))
+        new_params = filter(lambda p: id(p) not in ignored_params, model.parameters())
+        optimizer = optim.SGD([
+            {'params': model.module.resnet_features.parameters(), 'lr': args.learning_rate * 0.1},
+            {'params': new_params, 'lr': args.learning_rate}
+        ], momentum=0.9, weight_decay=5e-4)
 
+    elif model_name == 'senet_swin':
+        optimizer = optim.SGD([
+            {'params': model.module.senet154.parameters(), 'lr': args.learning_rate * 0.1},
+            {'params': model.module.swin_model.parameters(), 'lr': args.learning_rate * 0.1},
+            {'params': model.module.last_linear, 'lr': args.learning_rate}
+        ], momentum=0.9, weight_decay=5e-4)
+
+    elif model_name in ('senet154', 'swin'):
+        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4)
+
+    return optimizer
 if __name__ == "__main__":
 
     args = parse_args()
@@ -182,14 +201,7 @@ if __name__ == "__main__":
         model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-
-    ignored_params = list(map(id, model.module.resnet_features.parameters()))
-    new_params = filter(lambda p: id(p) not in ignored_params, model.parameters())
-
-    optimizer = optim.SGD([
-        {'params': model.module.resnet_features.parameters(), 'lr': args.learning_rate*0.1},
-        {'params': new_params, 'lr': args.learning_rate}
-    ], momentum=0.9, weight_decay=5e-4)
+    optimizer = get_optimizer(model_name)
 
     step_size = args.step_lr
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=0.9)
