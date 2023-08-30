@@ -80,10 +80,11 @@ class SeNet154(nn.Module):
 
     def _load_model(self):
         model_name = 'senet154'
-        # could be fbresnet152 or inceptionresnetv2
+
         model = pretrainedmodels.__dict__[model_name](num_classes=1000, pretrained='imagenet')
         model.eval()
         model.last_linear = nn.Linear(2048, 500, bias=True)
+        torch.nn.init.xavier_uniform_(model.last_linear.weight)
         return model
 
     def forward(self, x):
@@ -194,7 +195,7 @@ if __name__ == '__main__':
     # X = model(X)
     # print(X.shape)
 
-    model = load_model('senet_swin')
+    model = load_model('senet154')
     print(model)
     X = torch.randn(20, 3, 224, 224)
     X = model(X)

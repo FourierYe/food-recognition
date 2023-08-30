@@ -45,7 +45,8 @@ def train_model(epoch):
 
     total_sample = len(train_dataset)
     for batch_index, (images, target) in enumerate(train_loader):
-
+        if args.mixup:
+            images, target = transforms.v2.mixup(images, target)
         if args.multi_gpu:
             if torch.cuda.is_available():
                 images = images.cuda(device=device_ids[0])
@@ -143,6 +144,7 @@ def parse_args():
     parser.add_argument('--train_dataset_path', type=str, default="Food500_train_path")
     parser.add_argument('--test_dataset_path', type=str, default="Food500_test_path")
     parser.add_argument('--focal_loss', type=bool, default=False)
+    parser.add_argument('--mixup', type=bool, default=False)
     args, unparsed = parser.parse_known_args()
 
     return args
@@ -164,7 +166,12 @@ def get_optimizer(model_name):
         ], momentum=0.9, weight_decay=5e-4)
 
     elif model_name in ('senet154', 'swin'):
-        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4)
+        features_params = [param for name, param in model.named_parameters() if 'lase_linear' not in name]
+        fc_params = [param for name, param in model.named_parameters() if 'lase_linear' in name]
+        optimizer = optim.SGD([
+            {'params': fc_params, 'lr': args.learning_rate},
+            {'params': features_params, 'lr': args.learning_rate * 0.1}
+        ], lr=args.learning_rate, momentum=0.9, weight_decay=5e-4)
 
     return optimizer
 if __name__ == "__main__":
@@ -221,6 +228,6 @@ if __name__ == "__main__":
         if top1_acc > best_top1_acc:
             best_top1_acc = top1_acc
             best_top5_acc = top5_acc
-            torch.save(model.state_dict(), f'{model_name}_pretrained.pth')
+            torch.save(model.state_dict(), f'{model_name}_{epoch}_pretrained.pth')
 
     print(f"best top1 acc {best_top1_acc}; best top 5 acc {best_top5_acc}")
