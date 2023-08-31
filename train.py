@@ -9,7 +9,6 @@ import argparse
 import torchmetrics
 import torch
 from torchvision import transforms
-from torchvision.transforms import v2
 
 def load_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
