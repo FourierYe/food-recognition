@@ -9,6 +9,8 @@ import argparse
 import torchmetrics
 import torch
 from torchvision import transforms
+from data import *
+
 
 def load_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -45,8 +47,8 @@ def train_model(epoch):
 
     total_sample = len(train_dataset)
     for batch_index, (images, target) in enumerate(train_loader):
-        if args.mixup:
-            images, target = v2.mixup(images, target)
+        print(target.shape)
+        print(target[0])
         if args.multi_gpu:
             if torch.cuda.is_available():
                 images = images.cuda(device=device_ids[0])
@@ -145,6 +147,7 @@ def parse_args():
     parser.add_argument('--test_dataset_path', type=str, default="Food500_test_path")
     parser.add_argument('--focal_loss', type=bool, default=False)
     parser.add_argument('--mixup', type=bool, default=False)
+    parser.add_argument('--num_classes', type=int, default=500)
     args, unparsed = parser.parse_known_args()
 
     return args
@@ -189,12 +192,16 @@ if __name__ == "__main__":
     model_name = args.model
     train_dataset_path = args.train_dataset_path
     test_dataset_path = args.test_dataset_path
+    collate_fn = None
+    if args.mixup:
+        mixup_transform = RandomMixup(args.num_classes)
+        collate_fn = lambda batch: mixup_transform(*default_collate(batch))
 
     train_dataset, test_dataset = load_dataset(train_dataset_path, test_dataset_path, BATCH_SIZE)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True,
-                                               num_workers=2)
+                                               num_workers=8, collate_fn=collate_fn)
 
-    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=8)
 
     model = load_model(model_name)
 
