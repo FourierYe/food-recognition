@@ -9,6 +9,7 @@ import argparse
 import torchmetrics
 import torch
 from torchvision import transforms
+from torchvision.transforms import v2
 
 def load_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -46,7 +47,7 @@ def train_model(epoch):
     total_sample = len(train_dataset)
     for batch_index, (images, target) in enumerate(train_loader):
         if args.mixup:
-            images, target = transforms.v2.mixup(images, target)
+            images, target = v2.mixup(images, target)
         if args.multi_gpu:
             if torch.cuda.is_available():
                 images = images.cuda(device=device_ids[0])
