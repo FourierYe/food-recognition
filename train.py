@@ -119,11 +119,9 @@ def parse_args():
     parser.add_argument('--gpus', nargs='+', type=int, default=[0,1])
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--step_lr', type=int, default=10)
+    parser.add_argument('--step_lr', type=int, default=3)
     parser.add_argument('--train_dataset_path', type=str, default="Food500_train_path")
     parser.add_argument('--test_dataset_path', type=str, default="Food500_test_path")
-    parser.add_argument('--focal_loss', type=bool, default=False)
-    parser.add_argument('--mixup', type=bool, default=False)
     parser.add_argument('--num_classes', type=int, default=500)
     args, unparsed = parser.parse_known_args()
 
