@@ -11,27 +11,6 @@ import torch
 from torchvision import transforms
 from data import *
 
-
-def load_transforms():
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                      std=[0.229, 0.224, 0.225])
-    N = 256
-    train_transforms = transforms.Compose([
-         transforms.RandomHorizontalFlip(p=0.5),  # default value is 0.5
-         transforms.Resize((N, N)),
-         transforms.RandomCrop((224, 224)),
-         transforms.ToTensor(),
-         normalize
-     ])
-
-    test_transforms = transforms.Compose([
-         transforms.Resize((N, N)),
-         transforms.CenterCrop((224, 224)),
-         transforms.ToTensor(),
-         normalize
-     ])
-    return train_transforms, test_transforms
-
 # train model
 def train_model(epoch):
     print('Training Network.....')
@@ -47,8 +26,6 @@ def train_model(epoch):
 
     total_sample = len(train_dataset)
     for batch_index, (images, target) in enumerate(train_loader):
-        print(target.shape)
-        print(target[0])
         if args.multi_gpu:
             if torch.cuda.is_available():
                 images = images.cuda(device=device_ids[0])
@@ -193,10 +170,6 @@ if __name__ == "__main__":
     train_dataset_path = args.train_dataset_path
     test_dataset_path = args.test_dataset_path
     collate_fn = None
-    if args.mixup:
-        mixup_transform = RandomMixup(args.num_classes)
-        collate_fn = lambda batch: mixup_transform(*default_collate(batch))
-
     train_dataset, test_dataset = load_dataset(train_dataset_path, test_dataset_path, BATCH_SIZE)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True,
                                                num_workers=8, collate_fn=collate_fn)
