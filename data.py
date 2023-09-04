@@ -13,7 +13,7 @@ def load_transforms():
     train_transforms = transforms.Compose([
          transforms.RandomHorizontalFlip(p=0.5),  # default value is 0.5
          transforms.Resize((N, N)),
-         transforms.RandomCrop((224, 224))
+         transforms.RandomCrop((224, 224)),
          transforms.ToTensor(),
          normalize
      ])
