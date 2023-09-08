@@ -44,13 +44,16 @@ def load_model(model):
 class SenetSwin(nn.Module):
     def __init__(self, pretrained=False):
         super(SenetSwin, self).__init__()
-        senet_name = 'senet154'
-        # could be fbresnet152 or inceptionresnetv2
-        self.senet154 = pretrainedmodels.__dict__[senet_name](num_classes=1000, pretrained='imagenet')
-        self.senet154.eval()
+        if pretrained:
+            pass
+        else:
+            senet_name = 'senet154'
+            # could be fbresnet152 or inceptionresnetv2
+            self.senet154 = pretrainedmodels.__dict__[senet_name](num_classes=1000, pretrained='imagenet')
+            self.senet154.eval()
 
-        self.swin_model = models.swin_b(models.Swin_B_Weights)
-        self.last_linear = nn.Linear(in_features=2000, out_features=500, bias=True)
+            self.swin_model = models.swin_b(models.Swin_B_Weights)
+            self.last_linear = nn.Linear(in_features=2000, out_features=500, bias=True)
 
     def forward(self, x):
         features1 = self.senet154(x)
@@ -197,12 +200,3 @@ if __name__ == '__main__':
 
     model = load_model('senet154')
     print(model)
-    X = torch.randn(20, 3, 224, 224)
-    X = model(X)
-    print(X.shape)
-    import matplotlib.pyplot as plt
-
-    print(X[0,0,:,:].data)
-    plt.imshow(X[0,0,:,:].data)
-    plt.savefig('test')
-    plt.show()
