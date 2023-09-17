@@ -7,11 +7,12 @@ from torchvision import models
 from senet import *
 # helpers
 
-class SpationAttention(nn.Module):
-    def __init__(self, C, H, W):
+class SpatialAttention(nn.Module):
+    def __init__(self, C):
+        super().__init__()
         self.conv1 = nn.Conv2d(in_channels=C,out_channels=1,kernel_size=1, stride=1)
-        self.conv13_1 = nn.Conv2d(in_channels=1,out_channels=1, kernel_size=13, stride=6)
-        self.conv13_2 = nn.Conv2d(in_channels=1,out_channels=1, kernel_size=13, stride=6)
+        self.conv13_1 = nn.Conv2d(in_channels=1,out_channels=1, kernel_size=13, padding=6, stride=1)
+        self.conv13_2 = nn.Conv2d(in_channels=1,out_channels=1, kernel_size=13, padding=6, stride=1)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
@@ -22,14 +23,31 @@ class SpationAttention(nn.Module):
         return x
 
 class ChannelAttention(nn.Module):
-    def __init__(self):
+    def __init__(self, C, r):
+        super().__init__()
         self.gap = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        self.conv1_1 = nn.Conv2d(in_channels=C, out_channels=C//r, kernel_size=1, stride=1)
+        self.conv1_2 = nn.Conv2d(in_channels=C//r, out_channels=C, kernel_size=1, stride=1)
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
 
+    def forward(self, x):
+        x = self.gap(x)
+        x = self.relu(self.conv1_1(x))
+        x = self.sigmoid(self.conv1_2(x))
+        return x
 
 class PixelAttention(nn.Module):
-    def __init__(self, C, H, W):
+    def __init__(self, C):
+        super().__init__()
+        self.spatial_attention = SpatialAttention(C)
+        self.channel_attention = ChannelAttention(C, 16)
 
-
+    def forward(self, x):
+        ms = self.spatial_attention(x)
+        mc = self.channel_attention(x)
+        mp = torch.mul(ms, mc)
+        return torch.mul(mp, x)
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
@@ -115,9 +133,13 @@ class MyModel(nn.Module):
         self.layer4 = self.backbone.layer4
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
+        self.gap = nn.AdaptiveAvgPool2d(output_size=(1, 1))
 
-        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
-        self.fc = nn.Linear(in_features=512, out_features=500, bias=True)
+        self.layer1_attention = PixelAttention(C=256)
+        self.layer2_attention = PixelAttention(C=512)
+        self.layer3_attention = PixelAttention(C=1024)
+
+        self.fc = nn.Linear(in_features=3840, out_features=500, bias=True)
 
     def forward(self, x):
         x0 = self.layer0(x)
@@ -129,11 +151,23 @@ class MyModel(nn.Module):
         global_feature = self.transformer(x4.view(-1, 2048, 49))
         global_feature = global_feature.mean(dim=2)
 
-        return x
+        x1_after_attention = self.layer1_attention(x1) + x1
+        x2_after_attention = self.layer2_attention(x2) + x2
+        x3_after_attention = self.layer3_attention(x3) + x3
+
+        x1_feature = self.gap(x1_after_attention)
+        x2_feature = self.gap(x2_after_attention)
+        x3_feature = self.gap(x3_after_attention)
+
+        local_feature = torch.cat((x1_feature, x2_feature,x3_feature), dim=1).squeeze()
+        all_features = torch.cat((local_feature, global_feature), dim=1)
+
+        out = self.fc(all_features)
+        return out
 
 if __name__ == "__main__":
 
-    model = MyModel(num_classes=1000, dim=49, depth=2, heads=2, mlp_dim=768, pool = 'mean', dim_head = 64)
-    X = torch.randn(20, 4, 224, 224)
+    model = MyModel(num_classes=1000, dim=49, depth=2, heads=2, mlp_dim=768, pool='mean', dim_head=64)
+    X = torch.randn(2, 4, 224, 224)
     X = model(X)
     print(X.shape)

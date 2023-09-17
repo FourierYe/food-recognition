@@ -6,6 +6,46 @@ import os
 from torchvision import transforms
 from torch.utils.data.dataloader import default_collate
 
+class LBPFusion(object):
+    def __call__(self, img):
+        height = img.shape[0]
+        width = img.shape[1]
+
+        dst = img.copy()
+
+        lbp_value = np.zeros((1, 8), dtype=np.uint8)
+
+        neighbors = np.zeros((1, 8), dtype=np.uint8)
+
+        for x in range(1, width - 1):
+            for y in range(1, height - 1):
+                center = img[y, x]
+
+                neighbors[0, 0] = img[y - 1, x - 1]
+                neighbors[0, 1] = img[y - 1, x]
+                neighbors[0, 2] = img[y - 1, x + 1]
+                neighbors[0, 3] = img[y, x - 1]
+                neighbors[0, 4] = img[y, x + 1]
+                neighbors[0, 5] = img[y + 1, x - 1]
+                neighbors[0, 6] = img[y + 1, x]
+                neighbors[0, 7] = img[y + 1, x + 1]
+
+                for i in range(8):
+                    if neighbors[0, i] > center:
+                        lbp_value[0, i] = 1
+                    else:
+                        lbp_value[0, i] = 0
+
+                # uint8 八位二进制数来存放0-1序列 巧妙！
+                lbp = 0
+                for i in range(8):
+                    lbp += lbp_value[0, i] * 2 ** i
+
+                dst[y, x] = lbp
+
+        return dst
+
+
 def load_transforms():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                       std=[0.229, 0.224, 0.225])
@@ -112,10 +152,8 @@ def load_class_weight():
     return torch.tensor(label_weight)
 
 if __name__ == "__main__":
-    # train_loader, val_loader, test_loader = load_dataloader(80)
-    # train_loader, test_loader = load_dataset(80)
-    # print(test_loader)
-    # for imgs, lables in train_loader:
-    #     print(lables)
-    label_weight = load_class_weight()
-    print(label_weight)
+    train_loader, val_loader, test_loader = load_dataloader(80)
+    train_loader, test_loader = load_dataset(80)
+    print(test_loader)
+    for imgs, lables in train_loader:
+        print(lables)
